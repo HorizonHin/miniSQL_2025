@@ -19,6 +19,10 @@
 #include "exception.h"
 #include "buffer_manager.h"
 #include "template_function.h"
+#include <algorithm>
+#include <cstring>
+
+
 
 extern BufferManager buffer_manager;
 

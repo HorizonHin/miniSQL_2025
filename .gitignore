@@ -1,0 +1,25 @@
+# 忽略编译生成的文件
+*.o
+*.exe
+*.obj
+.vs
+
+# 忽略中间文件
+*.tmp
+*.log
+*.bak
+
+# 忽略数据库和输出文件
+database/
+unit_test/
+
+# 如果有 IDE 或编辑器特定文件，忽略它们
+.vscode/
+.idea/
+*.suo
+*.user
+*.ncb
+*.pdb
+
+# 忽略本地配置文件
+*.env
