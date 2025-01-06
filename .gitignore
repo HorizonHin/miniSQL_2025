@@ -1,6 +1,5 @@
 # 忽略编译生成的文件
 *.o
-*.exe
 *.obj
 .vs
 
@@ -9,9 +8,7 @@
 *.log
 *.bak
 
-# 忽略数据库和输出文件
-database/
-unit_test/
+
 
 # 如果有 IDE 或编辑器特定文件，忽略它们
 .vscode/
