@@ -1,11 +1,3 @@
-//
-//  basic.h
-//  base
-//
-//  Created by Sr on 2017/5/25.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
-
 #ifndef _BASIC_H_
 #define _BASIC_H_ 1
 #include <iostream>
@@ -37,8 +29,8 @@ struct Where{
     WHERE relation_character;   //关系
 };
 
-//在确定类型时，慎用str.size()+1来决定str的type的值，一张表最多32个attribute
-struct Attribute{
+//存放table的属性信息。在确定类型时，慎用str.size()+1来决定str的type的值，一张表最多32个attribute
+struct Attribute{  
     int num;  //存放table的属性数
     std::string name[32];  //存放每个属性的名字
     short type[32];  //存放每个属性的类型，-1：int,0:float,1~255:string的长度+1

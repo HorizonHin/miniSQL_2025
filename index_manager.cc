@@ -1,11 +1,3 @@
-//
-//  index_manager.cc
-//  index_manager
-//
-//  Created by Xw on 2017/6/5.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
-
 #include "index_manager.h"
 #include "const.h"
 #include "basic.h"

@@ -10,7 +10,7 @@ API::API(){}
 //析构函数
 API::~API(){}
 
-//输入：表名、Where条件属性名、Where条件值域
+//输入：表名 ; target_attr: where条件的左值 ; Where集合 ; char operation: 0表示and，1表示or
 //输出：Table类型对象(包含对应的属性元组)
 //功能：返回包含所有目标属性满足Where条件的记录的表
 //在多条件查询情况下，根据Where下的逻辑条件进行Table的拼接
@@ -25,12 +25,12 @@ Table API::selectRecord(std::string table_name, std::vector<std::string> target_
 	} else if (target_attr.size() == 1) {
         return record.selectRecord(table_name, target_attr[0], where[0]);
     } else {
-		Table table1 = record.selectRecord(table_name, target_attr[0], where[0]);
-		Table table2 = record.selectRecord(table_name, target_attr[1], where[1]);
+		Table table1 = record.selectRecord(table_name, target_attr[0], where[0]);//第一个条件的结果
+		Table table2 = record.selectRecord(table_name, target_attr[1], where[1]); //第二个条件的结果
 
-		if (operation)
+		if (operation) //and
 			return joinTable(table1, table2, target_attr[0], where[0]);
-		else
+		else   //or
 			return unionTable(table1, table2, target_attr[0], where[0]);
 	}
 }

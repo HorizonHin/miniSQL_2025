@@ -338,6 +338,7 @@ bool CatalogManager::hasTable(std::string table_name){
         std::string buffer_check(buffer);
         std::string str_tmp="";
         int start_index=0,end_index=0;
+
         do{
             //如果一开始就是#，则检查下一块
             if(buffer_check[0]=='#')
@@ -354,7 +355,9 @@ bool CatalogManager::hasTable(std::string table_name){
                     break;
             }
         }while(buffer_check[start_index]!='#');  //判断是否到头
+
     }
+
     return false;
 }
 

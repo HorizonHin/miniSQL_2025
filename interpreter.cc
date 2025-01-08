@@ -13,7 +13,7 @@ void Interpreter::getQuery(){
         getline(std::cin,tmp);
         query+=tmp;
         query+=' ';
-    } while (!tmp.empty() && tmp[tmp.length() - 1] != ';');
+    } while (tmp[tmp.length() - 1] != ';');
     //在最后补一个结尾标识符
     query[query.length()-2]='\0';
     //调用Normalize进行字符串的规范化
@@ -142,7 +142,7 @@ void Interpreter::EXEC(){
         exit(0);
     }
     catch(...){
-        std::cout<<">>> Error: 格式错误"<<std::endl;
+        std::cout<<">>> Error: wrong input format!"<<std::endl;
     }
 }
 
@@ -395,15 +395,15 @@ void Interpreter::EXEC_SELECT(){
     API API;
     CatalogManager CM;
     std::string table_name;
-    std::vector<std::string> attr_name;
-    std::vector<std::string> target_name;
+    std::vector<std::string> attr_name;  //被选择的列名集合。如果为size()==0，则表示选择所有列
+    std::vector<std::string> target_name;  //where之后条件中的左值，即列名集合
     std::vector<Where> where_select;
     std::string tmp_target_name;  //暂存where之后的目标列属性名
-    std::string tmp_value;
+    std::string tmp_value;  //where条件中的右值
     Where tmp_where;
     std::string relation;
     Table output_table;
-    char op=0;
+    char op=0;   //关系链接符号，0表示or，1表示and
     int check_index;
     int flag=0;//判断是否为select *
     if(getWord(7, check_index)=="*")
@@ -422,14 +422,14 @@ void Interpreter::EXEC_SELECT(){
         }
     }
 
-    if(Util.toLower(query.substr(check_index, 4))!="from")
+    if(Util::toLower(query.substr(check_index, 4))!="from")
         throw input_format_error();//格式错误
 
     check_index+=5;
     table_name=getWord(check_index, check_index);
     if(!CM.hasTable(table_name))
         throw table_not_exist();
-    Attribute tmp_attr=CM.getAttribute(table_name);
+    Attribute tmp_attr=CM.getAttribute(table_name); //得到表的属性
     if(!flag){//判断列是否存在
         for(int index=0;index<attr_name.size();index++){
             if(!CM.hasAttribute(table_name, attr_name[index]))
@@ -444,14 +444,13 @@ void Interpreter::EXEC_SELECT(){
 
 
     check_index++;
-    if(query[check_index]=='\0')
+    if(query[check_index]=='\0')    //没有where条件
         output_table=API.selectRecord(table_name, target_name, where_select,op);
-    else{
-
-        if(Util.toLower(query.substr(check_index, 5))!="where")
+    else{                         //有where条件
+        if(Util::toLower(query.substr(check_index, 5))!="where")
             throw input_format_error();//格式错误
         check_index+=6;
-        while(1){
+        while(1){   //循环处理where之后的条件
             tmp_target_name=getWord(check_index, check_index);
             if(!CM.hasAttribute(table_name, tmp_target_name))
                 throw attribute_not_exist();
@@ -528,8 +527,8 @@ void Interpreter::EXEC_SELECT(){
     //以下是输出函数
     
     Attribute attr_record=output_table.attr_;
-    int use[32]={0};
-    if(attr_name.size()==0){
+	int use[32] = { 0 };  //记录输出的列在Attribute.name中的下标
+    if(attr_name.size()==0){    //表示输出所有列
         for(int i=0;i<attr_record.num;i++)
             use[i]=i;
     }
@@ -543,13 +542,15 @@ void Interpreter::EXEC_SELECT(){
                 }
             }
     }
+
     std::vector<Tuple> output_tuple=output_table.getTuple();
-    int longest=-1;
+    int longest=-1;    //记录最大宽度
     for(int index=0;index<attr_name.size();index++){
         if((int)attr_record.name[use[index]].length()>longest)
             longest=(int)attr_record.name[use[index]].length();
     }
-    for(int index=0;index<attr_name.size();index++){
+
+    for(int index=0;index<attr_name.size();index++){ //这里的index被use映射到某一列的下标
         int type=attr_record.type[use[index]];
         if(type==-1){//int类型
             for(int i=0;i<output_tuple.size();i++){
@@ -574,8 +575,10 @@ void Interpreter::EXEC_SELECT(){
         }
     }
     longest+=1;
-    for(int index=0;index<attr_name.size();index++){
-        if(index!=attr_name.size()-1){
+
+    //输出表头
+    for(int index=0;index<attr_name.size();index++){ 
+        if(index!=attr_name.size()-1){ 
             for(int i=0;i<(longest-attr_record.name[use[index]].length())/2;i++)
                 printf(" ");
             printf("%s",attr_record.name[use[index]].c_str());
@@ -592,10 +595,14 @@ void Interpreter::EXEC_SELECT(){
             printf("\n");
         }
     }
+
+    //输出分隔符
     for(int index=0;index<attr_name.size()*(longest+1);index++){
         std::cout<<"-";
     }
     std::cout<<std::endl;
+
+//输出数据
     for(int index=0;index<output_tuple.size();index++){
         for(int i=0;i<attr_name.size();i++)
         {

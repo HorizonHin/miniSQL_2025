@@ -1,11 +1,3 @@
-//
-//  basic.cpp
-//  base
-//
-//  Created by Sr on 2017/5/25.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
-
 #include "basic.h"
 
 Tuple::Tuple(const Tuple &tuple_in){
