@@ -5,6 +5,7 @@ create table test(
     gpa float,
     primary key(id)
 );
+
 insert into test values('3150101001','vco',24,3.4);
 insert into test values('3150101002','ycy',21,0);
 insert into test values('3150101003','esd',18,4.4);

@@ -1,6 +1,7 @@
 #ifndef _EXCEPTION_H_
 #define _EXCEPTION_H_ 1
 
+
 #include <exception>
 
 class table_exist : public std::exception {
