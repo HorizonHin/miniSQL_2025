@@ -2,7 +2,7 @@
 #define _EXCEPTION_H_ 1
 
 #include <exception>
-
+//定义各种异常
 class table_exist : public std::exception {
     
 };
