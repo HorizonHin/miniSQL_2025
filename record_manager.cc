@@ -1,10 +1,4 @@
-//
-//  record_manager.cc
-//  record_manager
-//
-//  Created by Hys on 2017/5/30.
-//  Copyright © 2017年 Hys. All rights reserved.
-//
+
 #include "record_manager.h"
 
 //输入：表名
@@ -12,9 +6,27 @@
 //功能：建立表文件
 //异常：无异常处理（由catalog manager处理）
 void RecordManager::createTableFile(std::string table_name) {
-    table_name = "./database/data/" + table_name;
-    FILE* f = fopen(table_name.c_str() , "w");
+    std::string dir = "./database/data/";
+    // 检查路径是否存在，不存在则创建
+    struct stat info;
+    if (stat(dir.c_str(), &info) != 0) {
+        mkdir(dir.c_str(), 0755); // 创建目录
+    }
+    // 构建文件路径
+    std::string full_path = dir + table_name;
+    // 检查文件是否存在
+    std::ifstream infile(full_path);
+    if (infile.good()) { // 如果文件已存在
+		throw table_exist();
+    }
+    // 文件不存在，创建新文件
+    FILE* f = fopen(full_path.c_str(), "w");
+    if (!f) {
+        std::cerr << "Failed to create table file: " << table_name << std::endl;
+        return;
+    }
     fclose(f);
+    std::cout << "Table file '" << table_name << "' created successfully." << std::endl;
 }
 
 //输入：表名

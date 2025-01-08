@@ -60,7 +60,7 @@ public:
     //如果对应属性不存在，抛出attribute_not_exist异常
     //如果对应属性已经有了索引，抛出index_exist异常
     void EXEC_CREATE_INDEX();
-    //输入：insert into T1 values('WuZhaoHui',0001,99.99);
+    //输入：insert into T1 values('HuangHaoXin',99.99,0001);
     //输出：Success或者异常
     //功能：向T1内插入值的信息
     //异常：

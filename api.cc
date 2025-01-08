@@ -1,10 +1,3 @@
-//
-//  api.cc
-//  api
-//
-//  Created by Xw on 2017/5/31.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
 #include "api.h"
 #include "template_function.h"
 #include <algorithm>
@@ -230,9 +223,9 @@ Table API::joinTable(Table &table1, Table &table2, std::string target_attr, Wher
 	std::vector<Tuple> tuple2 = table2.getTuple();
     
     int i;
-    Attribute attr = table1.getAttr();
+    Attribute res_attr = table1.getAttr();
     for (i = 0; i < 32; i++)
-        if (attr.name[i] == target_attr)
+        if (res_attr.name[i] == target_attr)
             break;
     
     for (int j = 0; j < tuple2.size(); j++)

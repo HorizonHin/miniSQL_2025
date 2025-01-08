@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "util.h"
 
 Interpreter::Interpreter(){
 }
@@ -12,7 +13,7 @@ void Interpreter::getQuery(){
         getline(std::cin,tmp);
         query+=tmp;
         query+=' ';
-    }while(tmp[tmp.length()-1]!=';');
+    } while (!tmp.empty() && tmp[tmp.length() - 1] != ';');
     //在最后补一个结尾标识符
     query[query.length()-2]='\0';
     //调用Normalize进行字符串的规范化
@@ -59,6 +60,9 @@ void Interpreter::Normalize(){
 
 void Interpreter::EXEC(){
     try{
+        if (query.substr(0, 3) == "use") {
+            std::cout << "use 语法正在开发中，敬请期待！" << std::endl;
+        }
         //根据字符串的第一个单词来对所进行的操作解析
         if(query.substr(0,6)=="select"){
             EXEC_SELECT();
@@ -138,7 +142,7 @@ void Interpreter::EXEC(){
         exit(0);
     }
     catch(...){
-        std::cout<<">>> Error: Input format error!"<<std::endl;
+        std::cout<<">>> Error: 格式错误"<<std::endl;
     }
 }
 
@@ -394,7 +398,7 @@ void Interpreter::EXEC_SELECT(){
     std::vector<std::string> attr_name;
     std::vector<std::string> target_name;
     std::vector<Where> where_select;
-    std::string tmp_target_name;
+    std::string tmp_target_name;  //暂存where之后的目标列属性名
     std::string tmp_value;
     Where tmp_where;
     std::string relation;
@@ -417,14 +421,16 @@ void Interpreter::EXEC_SELECT(){
                 check_index+=2;
         }
     }
-    if(getLower(query, check_index).substr(check_index,4)!="from")
+
+    if(Util.toLower(query.substr(check_index, 4))!="from")
         throw input_format_error();//格式错误
+
     check_index+=5;
     table_name=getWord(check_index, check_index);
     if(!CM.hasTable(table_name))
         throw table_not_exist();
     Attribute tmp_attr=CM.getAttribute(table_name);
-    if(!flag){
+    if(!flag){//判断列是否存在
         for(int index=0;index<attr_name.size();index++){
             if(!CM.hasAttribute(table_name, attr_name[index]))
                 throw attribute_not_exist();
@@ -435,11 +441,14 @@ void Interpreter::EXEC_SELECT(){
             attr_name.push_back(tmp_attr.name[index]);
         }
     }
+
+
     check_index++;
     if(query[check_index]=='\0')
         output_table=API.selectRecord(table_name, target_name, where_select,op);
     else{
-        if(getLower(query, check_index).substr(check_index,5)!="where")
+
+        if(Util.toLower(query.substr(check_index, 5))!="where")
             throw input_format_error();//格式错误
         check_index+=6;
         while(1){
@@ -462,6 +471,7 @@ void Interpreter::EXEC_SELECT(){
                 tmp_where.relation_character=NOT_EQUAL;
             else
                 throw input_format_error();//格式错误
+
             tmp_value=getWord(check_index+1, check_index);
             for(int i=0;i<tmp_attr.num;i++)
             {
@@ -541,21 +551,21 @@ void Interpreter::EXEC_SELECT(){
     }
     for(int index=0;index<attr_name.size();index++){
         int type=attr_record.type[use[index]];
-        if(type==-1){
+        if(type==-1){//int类型
             for(int i=0;i<output_tuple.size();i++){
                 if(longest<getBits(output_tuple[i].getData()[use[index]].datai)){
                     longest=getBits(output_tuple[i].getData()[use[index]].datai);
                 }
             }
         }
-        if(type==0){
+        if(type==0){//float类型
             for(int i=0;i<output_tuple.size();i++){
                 if(longest<getBits(output_tuple[i].getData()[use[index]].dataf)){
                     longest=getBits(output_tuple[i].getData()[use[index]].dataf);
                 }
             }
         }
-        if(type>0){
+        if(type>0){//string类型   
             for(int i=0;i<output_tuple.size();i++){
                 if(longest<output_tuple[i].getData()[use[index]].datas.length()){
                     longest=(int)output_tuple[i].getData()[use[index]].datas.length();
@@ -847,3 +857,5 @@ int Interpreter::getBits(float num){
     }
     return bit+3;//为了保留小数点的后几位
 }
+
+
