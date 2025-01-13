@@ -68,6 +68,12 @@ public:
 	//如果对应属性不存在，抛出attribute_not_exist异常
     //如果对应属性没有索引，抛出index_not_exist异常
 	bool dropIndex(std::string table_name, std::string index_name);
+	//输入：旧表名、新表名
+	//输出：是否重命名成功
+	//功能：将数据库中的表重命名
+	//异常：如果旧表不存在，抛出 table_not_exist 异常
+	//如果新表名已存在，抛出 table_exist 异常
+	bool renameTable(std::string old_table_name, std::string new_table_name);
 private:
 	//私有函数，用于多条件查询时的and条件合并
     Table unionTable(Table &table1, Table &table2, std::string target_attr, Where where);

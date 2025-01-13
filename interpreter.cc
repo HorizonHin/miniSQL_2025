@@ -101,6 +101,9 @@ void Interpreter::EXEC(){
         else if(query.substr(0,8)=="execfile"){
             EXEC_FILE();
         }
+        else if(query.substr(0,6)=="rename") {
+            EXEC_RENAME_TABLE();
+        }
         //如果所有指令都不能对应，则抛出输入格式错误
         else{
             throw input_format_error();
@@ -863,6 +866,29 @@ int Interpreter::getBits(float num){
         integer_part/=10;
     }
     return bit+3;//为了保留小数点的后几位
+}
+
+void Interpreter::EXEC_RENAME_TABLE() {
+    API API;
+    int check_index;
+    
+    // 检查语法: rename table old_name to new_name
+    if(getLower(query, 7).substr(7,5)!="table")
+        throw input_format_error();
+        
+    // 获取旧表名
+    std::string old_table_name = getWord(13, check_index);
+    
+    // 检查 to 关键字
+    if(getLower(query, check_index+1).substr(check_index+1,2)!="to")
+        throw input_format_error();
+        
+    // 获取新表名
+    std::string new_table_name = getWord(check_index+4, check_index);
+    
+    // 执行重命名操作
+    API.renameTable(old_table_name, new_table_name);
+    std::cout<<">>> SUCCESS"<<std::endl;
 }
 
 

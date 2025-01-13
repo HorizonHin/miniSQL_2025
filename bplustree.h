@@ -24,21 +24,14 @@ extern BufferManager buffer_manager;
 template <typename T>
 class TreeNode {
 public:
-	//该结点内key数量
-    unsigned int num;
-	//指向父节点指针
-    TreeNode* parent;
-	//存放key容器
-    std::vector <T> keys;
-	//指向子结点的指针容器
-    std::vector <TreeNode*> childs;
+    unsigned int num; //该结点内key数量
+    TreeNode* parent;	//指向父节点指针
+    std::vector <T> keys;	//存放key容器
+    std::vector <TreeNode*> childs; //指向子结点的指针容器
     std::vector <int> vals;
-	//指向下一个叶结点的指针
-    TreeNode* nextLeafNode;
-    //此结点是否是叶结点的标志
-    bool isLeaf;
-	//此树的度
-    int degree;
+    TreeNode* nextLeafNode;  //指向下一个叶结点的指针
+    bool isLeaf;      //此结点是否是叶结点的标志
+    int degree;   	//此树的度
 
 public:
 	//构造函数
@@ -195,10 +188,7 @@ TreeNode<T>::~TreeNode()
 template <class T>
 bool TreeNode<T>::isRoot()
 {
-    if (parent != NULL)
-		return false;
-    else
-		return true;
+    return (parent == NULL);
 }
 
 //输入：key值，(index)
@@ -269,7 +259,7 @@ bool TreeNode<T>::findKey(T key, unsigned int &index)
 //输出：TreeNode指针
 //功能：将一个结点分裂成两个结点(与B+树的分裂有关)
 //新结点为本结点的下一个结点
-//同时功过key引用返回去到上层的key值
+//同时通过key引用返回去到上层的key值
 template <class T>
 TreeNode<T>* TreeNode<T>::splitNode(T &key)
 {
@@ -277,14 +267,6 @@ TreeNode<T>* TreeNode<T>::splitNode(T &key)
     unsigned int minmumNodeNum = (degree - 1) / 2;
 	//创建新结点
     TreeNode* newNode = new TreeNode(degree, this->isLeaf);
-
-	/*
-    if (newNode == NULL) {
-        cout << "Problems in allocate momeory of TreeNode in splite node of " << key << endl;
-        exit(2);
-    }
-	*/
-
 	//当前结点为叶结点情况
     if (isLeaf) {
         key = keys[minmumNodeNum + 1];
@@ -303,7 +285,8 @@ TreeNode<T>* TreeNode<T>::splitNode(T &key)
 		//调整两结点内key数量
         newNode->num = minmumNodeNum;
         this->num = minmumNodeNum + 1;
-    } else if (!isLeaf) {  //非叶结点情况
+    } 
+    else if (!isLeaf) {  //非叶结点情况
         key = keys[minmumNodeNum];
 		//拷贝子结点指针至新结点
         for (unsigned int i = minmumNodeNum + 1; i < degree+1; i++) {
@@ -344,10 +327,7 @@ unsigned int TreeNode<T>::addKey(T &key)
         unsigned int index = 0;
         bool exist = findKey(key, index);
         if (exist) {
-			/*
-            cout << "Error:In add(T &key),key has already in the tree!" << endl;
-            exit(3);
-			*/
+
         } else { //不存在，可以进行插入
 			//调整其他key值
             for (unsigned int i = num; i > index; i--)
@@ -674,9 +654,6 @@ bool BPlusTree<T>::deleteKey(T &key)
 		//查找位置
         findToLeaf(root, key, snp);
         if (!snp.ifFound) { //找不到该key
-			/*
-            cout << "ERROR: In deleteKey, no keys in the tree " << fileName << "!" << endl;
-			*/
             return false;
         } else { //正常找到进行删除
             if (snp.pNode->isRoot()) { //当前为根结点

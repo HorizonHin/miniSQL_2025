@@ -9998,10 +9998,4 @@ insert into test values('3150109989','dvz',19,1.6);
 insert into test values('3150109990','qwy',20,4.6);
 insert into test values('3150109991','uoe',21,3);
 insert into test values('3150109992','afr',22,0);
-insert into test values('3150109993','ica',25,3.4);
-insert into test values('3150109994','sak',19,0);
-insert into test values('3150109995','niz',19,4.2);
-insert into test values('3150109996','fak',18,0.6);
-insert into test values('3150109997','ina',25,1.6);
-insert into test values('3150109998','lyd',18,2.2);
-insert into test values('3150109999','qca',25,1);
+
