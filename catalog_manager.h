@@ -65,6 +65,8 @@ public:
     //功能：显示表的信息
     //异常：如果表不存在，抛出table_not_exist异常
     void showTable(std::string table_name);
+    //返回该表的index
+    Index getIndex(std::string table_name);
 private:
     //数字转字符串，bit为数的位数
     std::string num2str(int num,short bit);
@@ -74,8 +76,7 @@ private:
     std::string getTableName(std::string buffer,int start,int &rear);
     //返回表在文件中的位置,返回具体位置，引用传出数据所在的块信息
     int getTablePlace(std::string name,int &suitable_block);
-    //返回该表的index
-    Index getIndex(std::string table_name);
+
     //获取文件大小
     int getBlockNum(std::string table_name);
 };
