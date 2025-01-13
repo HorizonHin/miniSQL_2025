@@ -74,11 +74,21 @@ public:
 	//异常：如果旧表不存在，抛出 table_not_exist 异常
 	//如果新表名已存在，抛出 table_exist 异常
 	bool renameTable(std::string old_table_name, std::string new_table_name);
+	// 新增：左连接查询接口
+	Table leftJoinTables(std::string leftTable, std::string rightTable,
+						std::string leftAttr, std::string rightAttr,
+						std::string resultTableName = "tmp_join_table");
 private:
 	//私有函数，用于多条件查询时的and条件合并
     Table unionTable(Table &table1, Table &table2, std::string target_attr, Where where);
 	//私有函数，用于多条件查询时的or条件合并
 	Table joinTable(Table &table1, Table &table2, std::string target_attr, Where where);
+	// 新增：用于连接操作的私有辅助方法
+	bool isJoinAttributeMatch(const Data& leftData, const Data& rightData);
+	void mergeAttributes(const Attribute& leftAttr, const Attribute& rightAttr, 
+						Attribute& resultAttr);
+	Tuple mergeTuples(const Tuple& leftTuple, const Tuple& rightTuple, 
+					 const Attribute& leftAttr, const Attribute& rightAttr);
 
 private:
 	RecordManager record;

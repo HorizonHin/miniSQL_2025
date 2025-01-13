@@ -31,12 +31,14 @@ std::vector<Data> Tuple::getData() const{
 
 void Tuple::showTuple(){
     for(int index=0;index<getSize();index++){
-        if(data_[index].type==-1)
-            std::cout<<data_[index].datai<<'\t';
+        if(data_[index].isNull)
+            std::cout << std::left << std::setw(15) << "NULL";
+        else if(data_[index].type==-1)
+            std::cout << std::left << std::setw(15) << data_[index].datai;
         else if(data_[index].type==0)
-            std::cout<<data_[index].dataf<<'\t';
+            std::cout << std::left << std::setw(15) << std::fixed << std::setprecision(1) << data_[index].dataf;
         else
-            std::cout<<data_[index].datas<<'\t';
+            std::cout << std::left << std::setw(15) << data_[index].datas;
     }
     std::cout<<std::endl;
 }
@@ -153,17 +155,43 @@ Index Table::getIndex(){
 
 
 void Table::showTable(){
+    // 显示表头
     for(int index=0;index<attr_.num;index++)
-        std::cout<<attr_.name[index]<<'\t';
+        std::cout << std::left << std::setw(15) << attr_.name[index];
     std::cout<<std::endl;
+    
+    // 显示分隔线
+    for(int i = 0; i < attr_.num * 15; i++)
+        std::cout << "-";
+    std::cout << std::endl;
+    
+    // 显示数据
     for(int index=0;index<tuple_.size();index++)
         tuple_[index].showTuple();
 }
 
 void Table::showTable(int limit) {
+    // 显示表头
     for(int index=0;index<attr_.num;index++)
-        std::cout<<attr_.name[index]<<'\t';
+        std::cout << std::left << std::setw(15) << attr_.name[index];
     std::cout<<std::endl;
+    
+    // 显示分隔线
+    for(int i = 0; i < attr_.num * 15; i++)
+        std::cout << "-";
+    std::cout << std::endl;
+    
+    // 显示数据
     for(int index=0;index<limit&&index<tuple_.size();index++)
         tuple_[index].showTuple();
+}
+
+// 新增：JoinedTable构造函数实现
+JoinedTable::JoinedTable(std::string title, Attribute attr, 
+                        std::string leftTable, std::string rightTable, 
+                        std::string condition) 
+    : Table(title, attr),
+      leftTableName_(leftTable),
+      rightTableName_(rightTable),
+      joinCondition_(condition) {
 }

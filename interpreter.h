@@ -116,6 +116,12 @@ private:
     int getBits(int num);
     //输出：返回一个浮点数的位数（保留小数点后4位）
     int getBits(float num);
+
+    // 新增：用于处理LEFT JOIN的辅助方法
+    bool isLeftJoinQuery(const std::string& query);
+    void parseLeftJoin(std::string& leftTable, std::string& rightTable,
+                      std::string& leftAttr, std::string& rightAttr,
+                      int& pos);
 };
 
 template <class Type>
