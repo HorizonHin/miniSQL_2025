@@ -343,3 +343,35 @@ bool isSatisfied(Tuple& tuple, int target_attr, Where where)
             
     return false;
 }
+
+bool API::renameTable(std::string old_table_name, std::string new_table_name) {
+    // 检查旧表是否存在
+    if (!catalog.hasTable(old_table_name)) {
+        throw table_not_exist();
+    }
+    
+    // 检查新表名是否已存在
+    if (catalog.hasTable(new_table_name)) {
+        throw table_exist(); 
+    }
+
+    // 获取旧表的属性和索引信息
+    Attribute attr = catalog.getAttribute(old_table_name);
+    
+    // 创建新表(使用旧表的属性)
+    record.createTableFile(new_table_name);
+    catalog.createTable(new_table_name, attr, attr.primary_key, catalog.getIndex(old_table_name));
+    
+    // 复制数据
+    Table old_table = record.selectRecord(old_table_name);
+    std::vector<Tuple>& tuples = old_table.getTuple();
+    for (auto& tuple : tuples) {
+        record.insertRecord(new_table_name, tuple);
+    }
+    
+    // 删除旧表
+    record.dropTableFile(old_table_name);
+    catalog.dropTable(old_table_name);
+
+    return true;
+}

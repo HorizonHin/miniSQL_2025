@@ -85,6 +85,12 @@ public:
     //输入：execfile 文件路径
     //功能：根据文件路径读取文件信息，并用于数据库的操作
     void EXEC_FILE();
+    //输入：rename table t1 to t2;
+    //输出：Success或者异常
+    //功能：重命名表t1为t2
+    //异常：格式错误则抛出input_format_error异常
+    //如果表不存在，抛出table_not_exist异常
+    void EXEC_RENAME_TABLE();
     
 private:
     //字符串规范化函数
