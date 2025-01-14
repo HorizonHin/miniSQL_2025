@@ -50,7 +50,10 @@ bool isSatisfied(T a , T b , WHERE relation) {
             else
                 return false;
         };break;
+        default:
+            return false;
     }
+    return false; // 默认返回false
 }
 
 template <typename T>

@@ -2,7 +2,6 @@
 #define _BASIC_H_ 1
 #include <iostream>
 #include <vector>
-#include <iomanip>
 
 //用于where的判断 分别为小于，小于等于，等于，大于等于，大于，不等于
 typedef enum{
@@ -15,87 +14,125 @@ typedef enum{
 } WHERE;
 
 //一个struct存放它的一条信息的类型和值
+//用一个strunt嵌套一个union实现多种类型的转换
+//type的类型：-1：int,0:float,1-255:string(数值为字符串的长度+1),注意使用时对Value的选择！
 struct Data{
     int type;
     int datai;
     float dataf;
     std::string datas;
-    bool isNull;  // 新增：标识是否为NULL值
-    
-    Data() : isNull(false) {}  // 构造函数初始化isNull
+
+    bool operator<(const Data& other) const {
+        if(type != other.type) return false;
+        switch(type) {
+            case -1: return datai < other.datai;
+            case 0: return dataf < other.dataf;
+            default: return datas < other.datas;
+        }
+    }
+
+    bool operator<=(const Data& other) const {
+        return (*this < other) || (*this == other);
+    }
+
+    bool operator==(const Data& other) const {
+        if(type != other.type) return false;
+        switch(type) {
+            case -1: return datai == other.datai;
+            case 0: return dataf == other.dataf;
+            default: return datas == other.datas;
+        }
+    }
+
+    bool operator!=(const Data& other) const {
+        return !(*this == other);
+    }
+
+    bool operator>(const Data& other) const {
+        return !(*this <= other);
+    }
+
+    bool operator>=(const Data& other) const {
+        return !(*this < other);
+    }
 };
 
 //Where存放一组判断语句
 struct Where{
-    Data data;
-    WHERE relation_character;
+    Data data; //数据
+    WHERE relation_character;   //关系
 };
 
-//存放table的属性信息
+//存放连接条件的结构体
+struct JoinCondition {
+    std::string left_attr;  // 左表连接属性
+    std::string right_attr; // 右表连接属性
+    WHERE relation_character; // 连接关系
+};
+
+//存放table的属性信息。在确定类型时，慎用str.size()+1来决定str的type的值，一张表最多32个attribute
 struct Attribute{  
-    int num;
-    std::string name[32];
-    short type[32];
-    bool unique[32];
-    short primary_key;
-    bool has_index[32];
+    int num;  //存放table的属性数
+    std::string name[32];  //存放每个属性的名字
+    short type[32];  //存放每个属性的类型，-1：int,0:float,1~255:string的长度+1
+    bool unique[32];  //判断每个属性是否unique，是为true
+    short primary_key;  //判断是否存在主键,-1为不存在，其他则为主键的所在位置
+    bool has_index[32]; //判断是否存在索引
 };
 
+//索引管理，一张表最多只能有10个index
 struct Index{
-    int num;
-    short location[10];
-    std::string indexname[10];
+    int num;  //index的总数
+    short location[10];  //每个index在Attribute的name数组中是第几个
+    std::string indexname[10];  //每个index的名字
 };
 
+//元组管理，数据只增不减
 class Tuple{
 private:
-    std::vector<Data> data_;
+    std::vector<Data> data_;  //存储元组里的每个数据的信息
     bool isDeleted_;
 public:
     Tuple() : isDeleted_(false) {};
-    Tuple(const Tuple &tuple_in);
-    void addData(Data data_in);
-    std::vector<Data> getData() const;
-    int getSize();
-    bool isDeleted();
+    Tuple(const Tuple &tuple_in);  //拷贝元组
+    void addData(Data data_in);  //新增元组
+    std::vector<Data> getData() const;  //返回数据
+    int getSize();  //返回元组的数据数量
+    bool isDeleted() const;  // 修改为const成员函数
     void setDeleted();
-    void showTuple();
+    void showTuple();  //显示元组中的所有数据
 };
 
 class Table{
 private:
-    std::string title_;
-    std::vector<Tuple> tuple_;
-    Index index_;
+    std::string title_;  //表名
+    std::vector<Tuple> tuple_;  //存放所有的元组
+    Index index_;  //表的索引信息
 public:
-    Attribute attr_;
+    Attribute attr_;  //数据的类型
+    //构造函数
     Table(){};
     Table(std::string title,Attribute attr);
     Table(const Table &table_in);
-    int setIndex(short index,std::string index_name);
-    int dropIndex(std::string index_name);
+
+    // int DataSize();  //每个tuple占的数据大小
+
+    int setIndex(short index,std::string index_name);  //插入索引，输入要建立索引的Attribute的编号，以及索引的名字，成功返回1失败返回0
+    int dropIndex(std::string index_name);  //删除索引，输入建立的索引的名字，成功返回1失败返回0
+
+    //private的输出接口
     std::string getTitle();
     Attribute getAttr();
     std::vector<Tuple>& getTuple();
     Index getIndex();
     short gethasKey();
-    void showTable();
+
+    void showTable(); //显示table的部分数据
     void showTable(int limit);
+
+    //左连接操作
+    Table leftJoin(const Table& right_table, const JoinCondition& condition) const;
 };
 
-// 新增：用于存储连接结果的类
-class JoinedTable : public Table {
-private:
-    std::string leftTableName_;
-    std::string rightTableName_;
-    std::string joinCondition_;
-public:
-    JoinedTable(std::string title, Attribute attr, 
-                std::string leftTable, std::string rightTable, 
-                std::string condition);
-    std::string getLeftTableName() const { return leftTableName_; }
-    std::string getRightTableName() const { return rightTableName_; }
-    std::string getJoinCondition() const { return joinCondition_; }
-};
 
 #endif

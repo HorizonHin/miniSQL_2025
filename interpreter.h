@@ -91,12 +91,21 @@ public:
     //异常：格式错误则抛出input_format_error异常
     //如果表不存在，抛出table_not_exist异常
     void EXEC_RENAME_TABLE();
+    //输入：select * from t1 left join t2 on t1.id = t2.id;
+    //输出：Success或者异常
+    //功能：执行左连接查询
+    //异常：格式错误则抛出input_format_error异常
+    //如果表不存在，抛出table_not_exist异常
+    //如果属性不存在，抛出attribute_not_exist异常
+    void EXEC_LEFT_JOIN();
     
 private:
     //字符串规范化函数
     void Normalize();
     //存放输入的字符串和规范化后的字符串
     std::string query;
+    //存放当前处理位置
+    int end_pos;
     //输入：所对应的字符的开头位置，引用传出该字符的结尾位置
     //输出：这个位置所对应的单词的字符串
     //功能：从query中取字
@@ -116,12 +125,6 @@ private:
     int getBits(int num);
     //输出：返回一个浮点数的位数（保留小数点后4位）
     int getBits(float num);
-
-    // 新增：用于处理LEFT JOIN的辅助方法
-    bool isLeftJoinQuery(const std::string& query);
-    void parseLeftJoin(std::string& leftTable, std::string& rightTable,
-                      std::string& leftAttr, std::string& rightAttr,
-                      int& pos);
 };
 
 template <class Type>
