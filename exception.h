@@ -53,4 +53,9 @@ class unique_conflict:public std::exception{
     
 };
 
+// 新增异常类型
+class join_condition_invalid : public std::exception { };
+class join_tables_not_exist : public std::exception { };
+class join_attributes_type_conflict : public std::exception { };
+
 #endif 
