@@ -376,145 +376,34 @@ bool API::renameTable(std::string old_table_name, std::string new_table_name) {
     return true;
 }
 
-// 实现左连接查询
-Table API::leftJoinTables(std::string leftTable, std::string rightTable,
-                         std::string leftAttr, std::string rightAttr,
-                         std::string resultTableName) {
+Table API::leftJoinTables(std::string left_table_name, std::string right_table_name,
+                         std::string left_attr, std::string right_attr, WHERE relation) {
     // 检查表是否存在
-    if (!catalog.hasTable(leftTable) || !catalog.hasTable(rightTable)) {
-        throw join_tables_not_exist();
+    if(!catalog.hasTable(left_table_name)) {
+        throw table_not_exist();
     }
-
-    // 获取两个表的属性信息
-    Attribute leftAttrs = catalog.getAttribute(leftTable);
-    Attribute rightAttrs = catalog.getAttribute(rightTable);
-
-    // 查找连接属性的索引
-    int leftAttrIndex = -1, rightAttrIndex = -1;
-    for (int i = 0; i < leftAttrs.num; i++) {
-        if (leftAttrs.name[i] == leftAttr) {
-            leftAttrIndex = i;
-            break;
-        }
+    if(!catalog.hasTable(right_table_name)) {
+        throw table_not_exist();
     }
-    for (int i = 0; i < rightAttrs.num; i++) {
-        if (rightAttrs.name[i] == rightAttr) {
-            rightAttrIndex = i;
-            break;
-        }
-    }
-
-    // 检查连接条件是否有效
-    if (leftAttrIndex == -1 || rightAttrIndex == -1) {
-        throw join_condition_invalid();
-    }
-
-    // 检查连接属性类型是否匹配
-    if (leftAttrs.type[leftAttrIndex] != rightAttrs.type[rightAttrIndex]) {
-        throw join_attributes_type_conflict();
-    }
-
-    // 合并属性
-    Attribute resultAttr;
-    mergeAttributes(leftAttrs, rightAttrs, resultAttr);
-
-    // 创建结果表
-    Table resultTable(resultTableName, resultAttr);
-    std::vector<Tuple>& resultTuples = resultTable.getTuple();
-
-    // 获取两个表的数据
-    Table leftTableData = record.selectRecord(leftTable);
-    Table rightTableData = record.selectRecord(rightTable);
-
-    std::vector<Tuple>& leftTuples = leftTableData.getTuple();
-    std::vector<Tuple>& rightTuples = rightTableData.getTuple();
-
-    // 对左表的每条记录
-    for (const Tuple& leftTuple : leftTuples) {
-        bool found = false;
-        std::vector<Data> leftData = leftTuple.getData();
-
-        // 在右表中查找匹配的记录
-        for (const Tuple& rightTuple : rightTuples) {
-            std::vector<Data> rightData = rightTuple.getData();
-            
-            // 如果找到匹配
-            if (isJoinAttributeMatch(leftData[leftAttrIndex], rightData[rightAttrIndex])) {
-                found = true;
-                // 合并两条记录
-                Tuple mergedTuple = mergeTuples(leftTuple, rightTuple, leftAttrs, rightAttrs);
-                resultTuples.push_back(mergedTuple);
-            }
-        }
-
-        // 如果没有找到匹配，用NULL值填充右表部分
-        if (!found) {
-            Tuple mergedTuple = leftTuple;
-            // 添加右表的NULL值
-            for (int i = 0; i < rightAttrs.num; i++) {
-                Data nullData;
-                nullData.type = rightAttrs.type[i];
-                nullData.isNull = true;
-                mergedTuple.addData(nullData);
-            }
-            resultTuples.push_back(mergedTuple);
-        }
-    }
-
-    return resultTable;
-}
-
-// 判断两个值是否匹配
-bool API::isJoinAttributeMatch(const Data& leftData, const Data& rightData) {
-    if (leftData.type != rightData.type) return false;
-    if (leftData.isNull || rightData.isNull) return false;
-
-    switch (leftData.type) {
-        case -1: return leftData.datai == rightData.datai;
-        case 0: return leftData.dataf == rightData.dataf;
-        default: return leftData.datas == rightData.datas;
-    }
-}
-
-// 合并两个表的属性
-void API::mergeAttributes(const Attribute& leftAttr, const Attribute& rightAttr, 
-                         Attribute& resultAttr) {
-    resultAttr.num = leftAttr.num + rightAttr.num;
-    resultAttr.primary_key = -1;  // 连接结果没有主键
-
-    // 复制左表属性
-    for (int i = 0; i < leftAttr.num; i++) {
-        resultAttr.name[i] = leftAttr.name[i];
-        resultAttr.type[i] = leftAttr.type[i];
-        resultAttr.unique[i] = false;  // 连接结果不保证唯一性
-        resultAttr.has_index[i] = false;
-    }
-
-    // 复制右表属性
-    for (int i = 0; i < rightAttr.num; i++) {
-        resultAttr.name[i + leftAttr.num] = rightAttr.name[i];
-        resultAttr.type[i + leftAttr.num] = rightAttr.type[i];
-        resultAttr.unique[i + leftAttr.num] = false;
-        resultAttr.has_index[i + leftAttr.num] = false;
-    }
-}
-
-// 合并两条记录
-Tuple API::mergeTuples(const Tuple& leftTuple, const Tuple& rightTuple,
-                      const Attribute& leftAttr, const Attribute& rightAttr) {
-    Tuple mergedTuple;
     
-    // 复制左表数据
-    std::vector<Data> leftData = leftTuple.getData();
-    for (const Data& data : leftData) {
-        mergedTuple.addData(data);
+    // 检查属性是否存在
+    if(!catalog.hasAttribute(left_table_name, left_attr)) {
+        throw attribute_not_exist();
     }
-
-    // 复制右表数据
-    std::vector<Data> rightData = rightTuple.getData();
-    for (const Data& data : rightData) {
-        mergedTuple.addData(data);
+    if(!catalog.hasAttribute(right_table_name, right_attr)) {
+        throw attribute_not_exist();
     }
-
-    return mergedTuple;
+    
+    // 获取两个表
+    Table left_table = record.selectRecord(left_table_name);
+    Table right_table = record.selectRecord(right_table_name);
+    
+    // 创建连接条件
+    JoinCondition condition;
+    condition.left_attr = left_attr;
+    condition.right_attr = right_attr;
+    condition.relation_character = relation;
+    
+    // 执行左连接
+    return left_table.leftJoin(right_table, condition);
 }

@@ -18,5 +18,6 @@ basic.o: basic.cc basic.h
 	g++ -c -g basic.cc
 
 
-clean:
-	del /Q *.o *.exe
+
+clear:
+	rm *.o

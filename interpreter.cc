@@ -2,10 +2,13 @@
 #include "util.h"
 
 Interpreter::Interpreter(){
+    end_pos = 0;
 }
 
 //将query进行赋值
 void Interpreter::getQuery(){
+    query = "";  // 清空上一次的查询
+    end_pos = 0; // 重置位置
 	std::string tmp;
     //得到一行的所有字符，当最后一个字符为分号时结束
     do{
@@ -59,6 +62,28 @@ void Interpreter::Normalize(){
 }
 
 void Interpreter::EXEC(){
+    std::string operation_name=getWord(0,end_pos);
+    operation_name=getLower(operation_name,0);
+    if(operation_name=="select"){
+        std::string next_word = getWord(end_pos+1, end_pos);
+        next_word = getLower(next_word, 0);
+        if(next_word == "from") {
+            EXEC_SELECT();
+        } else if(next_word == "*") {
+            std::string third_word = getWord(end_pos+1, end_pos);
+            third_word = getLower(third_word, 0);
+            if(third_word == "from") {
+                std::string fourth_word = getWord(end_pos+1, end_pos);
+                std::string fifth_word = getWord(end_pos+1, end_pos);
+                fifth_word = getLower(fifth_word, 0);
+                if(fifth_word == "left") {
+                    EXEC_LEFT_JOIN();
+                } else {
+                    EXEC_SELECT();
+                }
+            }
+        }
+    }
     try{
         if (query.substr(0, 3) == "use") {
             std::cout << "use 语法正在开发中，敬请期待！" << std::endl;
@@ -395,132 +420,288 @@ void Interpreter::EXEC_INSERT(){
 
 //还需要table的显示
 void Interpreter::EXEC_SELECT(){
-    int pos = 0;
-    int end_pos;
-    std::string word;
-    std::vector<std::string> target_attr;
-    std::vector<Where> where;
+    API API;
+    CatalogManager CM;
     std::string table_name;
-    char operation = 0;
-    API api;
-    
-    // 跳过SELECT关键字
-    word = getWord(pos, end_pos);
-    pos = end_pos + 1;
-    
-    // 获取目标属性
-    do {
-        word = getWord(pos, end_pos);
-        target_attr.push_back(word);
-        pos = end_pos + 1;
-        if (query[pos - 1] == ' ') break;
-        pos++;
-    } while (1);
-    
-    // 跳过FROM关键字
-    word = getWord(pos, end_pos);
-    if (getLower(word, 0) != "from") {
-        throw input_format_error();
+    std::vector<std::string> attr_name;  //被选择的列名集合。如果为size()==0，则表示选择所有列
+    std::vector<std::string> target_name;  //where之后条件中的左值，即列名集合
+    std::vector<Where> where_select;
+    std::string tmp_target_name;  //暂存where之后的目标列属性名
+    std::string tmp_value;  //where条件中的右值
+    Where tmp_where;
+    std::string relation;
+    Table output_table;
+    char op=0;   //关系链接符号，0表示or，1表示and
+    int check_index;
+    int flag=0;//判断是否为select *
+    if(getWord(7, check_index)=="*")
+    {
+        flag=1;
+        check_index++;
     }
-    pos = end_pos + 1;
-    
-    // 获取表名
-    table_name = getWord(pos, end_pos);
-    pos = end_pos + 1;
-    
-    // 检查是否是LEFT JOIN查询
-    if (isLeftJoinQuery(query)) {
-        std::string leftTable = table_name;
-        std::string rightTable, leftAttr, rightAttr;
-        
-        // 解析LEFT JOIN部分
-        parseLeftJoin(leftTable, rightTable, leftAttr, rightAttr, pos);
-        
-        // 执行LEFT JOIN
-        Table result = api.leftJoinTables(leftTable, rightTable, leftAttr, rightAttr);
-        result.showTable();
-        std::cout << ">>> SUCCESS" << std::endl;
-        return;
-    }
-    
-    // 处理普通SELECT查询
-    if(pos >= query.length() || query[pos] == ';') {
-        Table table = api.selectRecord(table_name, target_attr, where, operation);
-        table.showTable();
-        std::cout << ">>> SUCCESS" << std::endl;
-        return;
-    }
-    
-    // 处理WHERE子句
-    word = getWord(pos, end_pos);
-    if(getLower(word, 0) != "where")
-        throw input_format_error();
-    pos = end_pos + 1;
-    
-    do {
-        Where where_item;
-        std::string target = getWord(pos, end_pos);
-        pos = end_pos + 1;
-        
-        std::string relation_str = getRelation(pos, end_pos);
-        if(relation_str == "<")
-            where_item.relation_character = LESS;
-        else if(relation_str == "<=")
-            where_item.relation_character = LESS_OR_EQUAL;
-        else if(relation_str == "=")
-            where_item.relation_character = EQUAL;
-        else if(relation_str == ">")
-            where_item.relation_character = GREATER;
-        else if(relation_str == ">=")
-            where_item.relation_character = GREATER_OR_EQUAL;
-        else if(relation_str == "<>")
-            where_item.relation_character = NOT_EQUAL;
-        else
-            throw input_format_error();
-        pos = end_pos + 1;
-        
-        word = getWord(pos, end_pos);
-        pos = end_pos + 1;
-        
-        CatalogManager catalog_manager;
-        Attribute attr = catalog_manager.getAttribute(table_name);
-        int index = -1;
-        for(int i = 0; i < attr.num; i++) {
-            if(attr.name[i] == target) {
-                index = i;
+    else{
+        check_index=7;
+        while(1){
+            attr_name.push_back(getWord(check_index, check_index));
+            if(query[++check_index]!=',')
                 break;
+            else
+                check_index+=2;
+        }
+    }
+
+    if(Util::toLower(query.substr(check_index, 4))!="from")
+        throw input_format_error();//格式错误
+
+    check_index+=5;
+    table_name=getWord(check_index, check_index);
+    if(!CM.hasTable(table_name))
+        throw table_not_exist();
+    Attribute tmp_attr=CM.getAttribute(table_name); //得到表的属性
+    if(!flag){//判断列是否存在
+        for(int index=0;index<attr_name.size();index++){
+            if(!CM.hasAttribute(table_name, attr_name[index]))
+                throw attribute_not_exist();
+        }
+    }
+    else{
+        for(int index=0;index<tmp_attr.num;index++){
+            attr_name.push_back(tmp_attr.name[index]);
+        }
+    }
+
+
+    check_index++;
+    if(query[check_index]=='\0')    //没有where条件
+        output_table=API.selectRecord(table_name, target_name, where_select,op);
+    else{                         //有where条件
+        if(Util::toLower(query.substr(check_index, 5))!="where")
+            throw input_format_error();//格式错误
+        check_index+=6;
+        while(1){   //循环处理where之后的条件
+            tmp_target_name=getWord(check_index, check_index);
+            if(!CM.hasAttribute(table_name, tmp_target_name))
+                throw attribute_not_exist();
+            target_name.push_back(tmp_target_name);
+            relation=getRelation(check_index+1, check_index);
+            if(relation=="<")
+                tmp_where.relation_character=LESS;
+            else if(relation=="< =")
+                tmp_where.relation_character=LESS_OR_EQUAL;
+            else if(relation=="=")
+                tmp_where.relation_character=EQUAL;
+            else if(relation=="> =")
+                tmp_where.relation_character=GREATER_OR_EQUAL;
+            else if(relation==">")
+                tmp_where.relation_character=GREATER;
+            else if(relation=="! =")
+                tmp_where.relation_character=NOT_EQUAL;
+            else
+                throw input_format_error();//格式错误
+
+            tmp_value=getWord(check_index+1, check_index);
+            for(int i=0;i<tmp_attr.num;i++)
+            {
+                if(tmp_target_name==tmp_attr.name[i]){
+                    tmp_where.data.type=tmp_attr.type[i];
+                    switch (tmp_where.data.type) {
+                        case -1:
+                            try {
+                                tmp_where.data.datai=stringToNum<int>(tmp_value);
+                            } catch (...) {
+                                throw data_type_conflict();//转换失败
+                            }
+                            break;
+                        case 0:
+                            try {
+                                tmp_where.data.dataf=stringToNum<float>(tmp_value);
+                            } catch (...) {
+                                throw data_type_conflict();//转换失败
+                            }
+                            break;
+                        default:
+                            try {
+                                if(!(tmp_value[0]!='\''&&tmp_value[tmp_value.length()-1]!='\'')&&!(tmp_value[0]!='"'&&tmp_value[tmp_value.length()-1]!='"'))
+                                    throw input_format_error();//格式不正确
+                                tmp_where.data.datas=tmp_value.substr(1,tmp_value.length()-2);
+                            }
+                            catch(input_format_error error){
+                                throw input_format_error();
+                            }
+                            catch (...) {
+                                throw data_type_conflict();//转换失败
+                            }
+                    }
+                    break;
+                }
+            }
+            
+            where_select.push_back(tmp_where);
+            if(query[check_index+1]=='\0')
+                break;
+            else if(getLower(query, check_index+1).substr(check_index+1,3)=="and")//假设关系链接是and
+                op=1;
+            else if(getLower(query, check_index+1).substr(check_index+1,2)=="or")//假设关系链接是or
+                op=0;
+            else
+                throw 1;
+            getWord(check_index+1, check_index);
+            check_index++;
+        }
+        
+        output_table=API.selectRecord(table_name, target_name, where_select,op);
+    }
+    
+    //以下是输出函数
+    
+    Attribute attr_record=output_table.attr_;
+	int use[32] = { 0 };  //记录输出的列在Attribute.name中的下标
+    if(attr_name.size()==0){    //表示输出所有列
+        for(int i=0;i<attr_record.num;i++)
+            use[i]=i;
+    }
+    else{
+        for(int i=0;i<attr_name.size();i++)
+            for(int j=0;j<attr_record.num;j++){
+                if(attr_record.name[j]==attr_name[i])
+                {
+                    use[i]=j;
+                    break;
+                }
+            }
+    }
+
+    std::vector<Tuple> output_tuple=output_table.getTuple();
+    int longest=-1;    //记录最大宽度
+    for(int index=0;index<attr_name.size();index++){
+        if((int)attr_record.name[use[index]].length()>longest)
+            longest=(int)attr_record.name[use[index]].length();
+    }
+
+    for(int index=0;index<attr_name.size();index++){ //这里的index被use映射到某一列的下标
+        int type=attr_record.type[use[index]];
+        if(type==-1){//int类型
+            for(int i=0;i<output_tuple.size();i++){
+                if(longest<getBits(output_tuple[i].getData()[use[index]].datai)){
+                    longest=getBits(output_tuple[i].getData()[use[index]].datai);
+                }
             }
         }
-        if(index == -1)
-            throw attribute_not_exist();
-        
-        where_item.data.type = attr.type[index];
-        std::stringstream ss;
-        ss << word;
-        if(attr.type[index] == -1)
-            ss >> where_item.data.datai;
-        else if(attr.type[index] == 0)
-            ss >> where_item.data.dataf;
-        else
-            where_item.data.datas = word;
-        
-        where.push_back(where_item);
-        
-        if(pos >= query.length() || query[pos] == ';')
-            break;
-        word = getWord(pos, end_pos);
-        if(getLower(word, 0) == "and")
-            operation = 1;
-        else if(getLower(word, 0) == "or")
-            operation = 0;
-        else
-            throw input_format_error();
-        pos = end_pos + 1;
-    } while(1);
-    
-    Table table = api.selectRecord(table_name, target_attr, where, operation);
-    table.showTable();
-    std::cout << ">>> SUCCESS" << std::endl;
+        if(type==0){//float类型
+            for(int i=0;i<output_tuple.size();i++){
+                if(longest<getBits(output_tuple[i].getData()[use[index]].dataf)){
+                    longest=getBits(output_tuple[i].getData()[use[index]].dataf);
+                }
+            }
+        }
+        if(type>0){//string类型   
+            for(int i=0;i<output_tuple.size();i++){
+                if(longest<output_tuple[i].getData()[use[index]].datas.length()){
+                    longest=(int)output_tuple[i].getData()[use[index]].datas.length();
+                }
+            }
+        }
+    }
+    longest+=1;
+
+    //输出表头
+    for(int index=0;index<attr_name.size();index++){ 
+        if(index!=attr_name.size()-1){ 
+            for(int i=0;i<(longest-attr_record.name[use[index]].length())/2;i++)
+                printf(" ");
+            printf("%s",attr_record.name[use[index]].c_str());
+            for(int i=0;i<longest-(longest-attr_record.name[use[index]].length())/2-attr_record.name[use[index]].length();i++)
+                printf(" ");
+            printf("|");
+        }
+        else{
+            for(int i=0;i<(longest-attr_record.name[use[index]].length())/2;i++)
+                printf(" ");
+            printf("%s",attr_record.name[use[index]].c_str());
+            for(int i=0;i<longest-(longest-attr_record.name[use[index]].length())/2-attr_record.name[use[index]].length();i++)
+                printf(" ");
+            printf("\n");
+        }
+    }
+
+    //输出分隔符
+    for(int index=0;index<attr_name.size()*(longest+1);index++){
+        std::cout<<"-";
+    }
+    std::cout<<std::endl;
+
+//输出数据
+    for(int index=0;index<output_tuple.size();index++){
+        for(int i=0;i<attr_name.size();i++)
+        {
+            switch (output_tuple[index].getData()[use[i]].type) {
+                case -1:
+                    if(i!=attr_name.size()-1){
+                        int len=output_tuple[index].getData()[use[i]].datai;
+                        len=getBits(len);
+                        for(int i=0;i<(longest-len)/2;i++)
+                            printf(" ");
+                        printf("%d",output_tuple[index].getData()[use[i]].datai);
+                        for(int i=0;i<longest-(longest-len)/2-len;i++)
+                            printf(" ");
+                        printf("|");
+                    }
+                    else{
+                        int len=output_tuple[index].getData()[use[i]].datai;
+                        len=getBits(len);
+                        for(int i=0;i<(longest-len)/2;i++)
+                            printf(" ");
+                        printf("%d",output_tuple[index].getData()[use[i]].datai);
+                        for(int i=0;i<longest-(longest-len)/2-len;i++)
+                            printf(" ");
+                        printf("\n");
+                    }
+                    break;
+                case 0:
+                    if(i!=attr_name.size()-1){
+                        float num=output_tuple[index].getData()[use[i]].dataf;
+                        int len=getBits(num);
+                        for(int i=0;i<(longest-len)/2;i++)
+                            printf(" ");
+                        printf("%.2f",output_tuple[index].getData()[use[i]].dataf);
+                        for(int i=0;i<longest-(longest-len)/2-len;i++)
+                            printf(" ");
+                        printf("|");
+                    }
+                    else{
+                        float num=output_tuple[index].getData()[use[i]].dataf;
+                        int len=getBits(num);
+                        for(int i=0;i<(longest-len)/2;i++)
+                            printf(" ");
+                        printf("%.2f",output_tuple[index].getData()[use[i]].dataf);
+                        for(int i=0;i<longest-(longest-len)/2-len;i++)
+                            printf(" ");
+                        printf("\n");
+                    }
+                    break;
+                default:
+                    std::string tmp=output_tuple[index].getData()[use[i]].datas;
+                    if(i!=attr_name.size()-1){
+                        for(int i=0;i<(longest-tmp.length())/2;i++)
+                            printf(" ");
+                        printf("%s",tmp.c_str());
+                        for(int i=0;i<longest-(longest-(int)tmp.length())/2-(int)tmp.length();i++)
+                            printf(" ");
+                        printf("|");
+                    }
+                    else{
+                        std::string tmp=output_tuple[index].getData()[i].datas;
+                        for(int i=0;i<(longest-tmp.length())/2;i++)
+                            printf(" ");
+                        printf("%s",tmp.c_str());
+                        for(int i=0;i<longest-(longest-(int)tmp.length())/2-(int)tmp.length();i++)
+                            printf(" ");
+                        printf("\n");
+                    }
+                    break;
+            }
+        }
+    }
 }
 
 void Interpreter::EXEC_CREATE_TABLE(){
@@ -735,67 +916,70 @@ void Interpreter::EXEC_RENAME_TABLE() {
     std::cout<<">>> SUCCESS"<<std::endl;
 }
 
-// 检查是否为LEFT JOIN查询
-bool Interpreter::isLeftJoinQuery(const std::string& query) {
-    std::string lowerQuery = query;
-    std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), ::tolower);
-    return lowerQuery.find("left join") != std::string::npos;
-}
-
-// 解析LEFT JOIN语句
-void Interpreter::parseLeftJoin(std::string& leftTable, std::string& rightTable,
-                              std::string& leftAttr, std::string& rightAttr,
-                              int& pos) {
-    int end_pos;
-    // 跳过LEFT JOIN关键字
-    pos = query.find("JOIN", pos) + 4;
-    while (query[pos] == ' ') pos++;
+void Interpreter::EXEC_LEFT_JOIN() {
+    API api;
+    std::string sql = query;
+    std::stringstream ss(sql);
+    std::string word;
+    
+    // 跳过 "select * from"
+    ss >> word >> word >> word;
+    
+    // 获取左表名
+    std::string left_table;
+    ss >> left_table;
+    
+    // 跳过 "left join"
+    ss >> word >> word;
     
     // 获取右表名
-    rightTable = getWord(pos, end_pos);
-    pos = end_pos + 1;
+    std::string right_table;
+    ss >> right_table;
     
-    // 跳过ON关键字
-    while (query[pos] == ' ') pos++;
-    std::string on = getWord(pos, end_pos);
-    if (getLower(on, 0) != "on") {
+    // 跳过 "on"
+    ss >> word;
+    
+    // 获取连接条件
+    std::string left_condition, op, right_condition;
+    ss >> left_condition >> op >> right_condition;
+    
+    // 解析左表属性名
+    size_t dot_pos = left_condition.find('.');
+    if(dot_pos == std::string::npos) {
         throw input_format_error();
     }
-    pos = end_pos + 1;
+    std::string left_attr = left_condition.substr(dot_pos + 1);
     
-    // 获取左表属性
-    std::string leftTableAttr = getWord(pos, end_pos);
-    size_t dotPos = leftTableAttr.find('.');
-    if (dotPos == std::string::npos) {
+    // 解析右表属性名
+    dot_pos = right_condition.find('.');
+    if(dot_pos == std::string::npos) {
         throw input_format_error();
     }
-    leftTable = leftTableAttr.substr(0, dotPos);
-    leftAttr = leftTableAttr.substr(dotPos + 1);
-    pos = end_pos + 1;
+    std::string right_attr = right_condition.substr(dot_pos + 1);
     
-    // 跳过=号
-    while (query[pos] == ' ') pos++;
-    if (query[pos] != '=') {
-        throw input_format_error();
+    // 解析操作符
+    WHERE relation;
+    if(op == "=") relation = EQUAL;
+    else if(op == "<") relation = LESS;
+    else if(op == "<=") relation = LESS_OR_EQUAL;
+    else if(op == ">") relation = GREATER;
+    else if(op == ">=") relation = GREATER_OR_EQUAL;
+    else if(op == "<>") relation = NOT_EQUAL;
+    else throw input_format_error();
+    
+    try {
+        // 执行左连接
+        Table result = api.leftJoinTables(left_table, right_table, left_attr, right_attr, relation);
+        // 显示结果
+        result.showTable();
+        std::cout << "Left join executed successfully." << std::endl;
+    } catch(table_not_exist&) {
+        std::cout << "Error: Table not exist!" << std::endl;
+    } catch(attribute_not_exist&) {
+        std::cout << "Error: Attribute not exist!" << std::endl;
+    } catch(input_format_error&) {
+        std::cout << "Error: Input format error!" << std::endl;
     }
-    pos++;
-    
-    // 获取右表属性
-    while (query[pos] == ' ') pos++;
-    std::string rightTableAttr = getWord(pos, end_pos);
-    dotPos = rightTableAttr.find('.');
-    if (dotPos == std::string::npos) {
-        throw input_format_error();
-    }
-    std::string rightTableName = rightTableAttr.substr(0, dotPos);
-    rightAttr = rightTableAttr.substr(dotPos + 1);
-    
-    // 验证表名匹配
-    if (rightTableName != rightTable) {
-        throw input_format_error();
-    }
-    
-    pos = end_pos + 1;
 }
 
 

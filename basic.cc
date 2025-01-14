@@ -1,10 +1,15 @@
 #include "basic.h"
+#include "exception.h"
+#include "template_function.h"
+#include <iomanip>
+#include <sstream>
 
 Tuple::Tuple(const Tuple &tuple_in){
     for(int index=0;index<tuple_in.data_.size();index++)
     {
         this->data_.push_back(tuple_in.data_[index]);
     }
+    this->isDeleted_ = tuple_in.isDeleted_;
 }
 
 inline int Tuple::getSize(){
@@ -16,7 +21,7 @@ void Tuple::addData(Data data_in){
     this->data_.push_back(data_in);
 }
 
-bool Tuple::isDeleted() {
+bool Tuple::isDeleted() const {
     return isDeleted_;
 }
 
@@ -31,14 +36,12 @@ std::vector<Data> Tuple::getData() const{
 
 void Tuple::showTuple(){
     for(int index=0;index<getSize();index++){
-        if(data_[index].isNull)
-            std::cout << std::left << std::setw(15) << "NULL";
-        else if(data_[index].type==-1)
-            std::cout << std::left << std::setw(15) << data_[index].datai;
+        if(data_[index].type==-1)
+            std::cout<<data_[index].datai<<'\t';
         else if(data_[index].type==0)
-            std::cout << std::left << std::setw(15) << std::fixed << std::setprecision(1) << data_[index].dataf;
+            std::cout<<data_[index].dataf<<'\t';
         else
-            std::cout << std::left << std::setw(15) << data_[index].datas;
+            std::cout<<data_[index].datas<<'\t';
     }
     std::cout<<std::endl;
 }
@@ -155,43 +158,236 @@ Index Table::getIndex(){
 
 
 void Table::showTable(){
-    // 显示表头
-    for(int index=0;index<attr_.num;index++)
-        std::cout << std::left << std::setw(15) << attr_.name[index];
-    std::cout<<std::endl;
+    // 计算每列的最大宽度
+    std::vector<size_t> col_widths(attr_.num, 0);
     
-    // 显示分隔线
-    for(int i = 0; i < attr_.num * 15; i++)
-        std::cout << "-";
+    // 计算列名的宽度
+    for(int i = 0; i < attr_.num; i++) {
+        col_widths[i] = std::max(col_widths[i], attr_.name[i].length());
+    }
+    
+    // 计算数据的宽度
+    for(const auto& tuple : tuple_) {
+        if(tuple.isDeleted()) continue;
+        const auto& data = tuple.getData();
+        for(int i = 0; i < attr_.num; i++) {
+            std::string value;
+            if(data[i].type == -1)
+                value = std::to_string(data[i].datai);
+            else if(data[i].type == 0)
+                value = std::to_string(data[i].dataf);
+            else
+                value = data[i].datas;
+            col_widths[i] = std::max(col_widths[i], value.length());
+        }
+    }
+    
+    // 打印列名
+    for(int i = 0; i < attr_.num; i++) {
+        std::cout << std::left << std::setw(col_widths[i] + 4) << attr_.name[i];
+    }
     std::cout << std::endl;
     
-    // 显示数据
-    for(int index=0;index<tuple_.size();index++)
-        tuple_[index].showTuple();
+    // 打印分隔线
+    for(int i = 0; i < attr_.num; i++) {
+        std::cout << std::string(col_widths[i] + 4, '-');
+    }
+    std::cout << std::endl;
+    
+    // 打印数据
+    for(const auto& tuple : tuple_) {
+        if(tuple.isDeleted()) continue;
+        const auto& data = tuple.getData();
+        for(int i = 0; i < attr_.num; i++) {
+            std::string value;
+            if(data[i].type == -1)
+                value = std::to_string(data[i].datai);
+            else if(data[i].type == 0) {
+                std::ostringstream ss;
+                ss << std::fixed << std::setprecision(2) << data[i].dataf;
+                value = ss.str();
+            }
+            else
+                value = data[i].datas;
+            std::cout << std::left << std::setw(col_widths[i] + 4) << value;
+        }
+        std::cout << std::endl;
+    }
 }
 
 void Table::showTable(int limit) {
-    // 显示表头
-    for(int index=0;index<attr_.num;index++)
-        std::cout << std::left << std::setw(15) << attr_.name[index];
-    std::cout<<std::endl;
+    // 计算每列的最大宽度
+    std::vector<size_t> col_widths(attr_.num, 0);
     
-    // 显示分隔线
-    for(int i = 0; i < attr_.num * 15; i++)
-        std::cout << "-";
+    // 计算列名的宽度
+    for(int i = 0; i < attr_.num; i++) {
+        col_widths[i] = std::max(col_widths[i], attr_.name[i].length());
+    }
+    
+    // 计算数据的宽度
+    int count = 0;
+    for(const auto& tuple : tuple_) {
+        if(count >= limit) break;
+        if(tuple.isDeleted()) continue;
+        const auto& data = tuple.getData();
+        for(int i = 0; i < attr_.num; i++) {
+            std::string value;
+            if(data[i].type == -1)
+                value = std::to_string(data[i].datai);
+            else if(data[i].type == 0)
+                value = std::to_string(data[i].dataf);
+            else
+                value = data[i].datas;
+            col_widths[i] = std::max(col_widths[i], value.length());
+        }
+        count++;
+    }
+    
+    // 打印列名
+    for(int i = 0; i < attr_.num; i++) {
+        std::cout << std::left << std::setw(col_widths[i] + 4) << attr_.name[i];
+    }
     std::cout << std::endl;
     
-    // 显示数据
-    for(int index=0;index<limit&&index<tuple_.size();index++)
-        tuple_[index].showTuple();
+    // 打印分隔线
+    for(int i = 0; i < attr_.num; i++) {
+        std::cout << std::string(col_widths[i] + 4, '-');
+    }
+    std::cout << std::endl;
+    
+    // 打印数据
+    count = 0;
+    for(const auto& tuple : tuple_) {
+        if(count >= limit) break;
+        if(tuple.isDeleted()) continue;
+        const auto& data = tuple.getData();
+        for(int i = 0; i < attr_.num; i++) {
+            std::string value;
+            if(data[i].type == -1)
+                value = std::to_string(data[i].datai);
+            else if(data[i].type == 0) {
+                std::ostringstream ss;
+                ss << std::fixed << std::setprecision(2) << data[i].dataf;
+                value = ss.str();
+            }
+            else
+                value = data[i].datas;
+            std::cout << std::left << std::setw(col_widths[i] + 4) << value;
+        }
+        std::cout << std::endl;
+        count++;
+    }
 }
 
-// 新增：JoinedTable构造函数实现
-JoinedTable::JoinedTable(std::string title, Attribute attr, 
-                        std::string leftTable, std::string rightTable, 
-                        std::string condition) 
-    : Table(title, attr),
-      leftTableName_(leftTable),
-      rightTableName_(rightTable),
-      joinCondition_(condition) {
+Table Table::leftJoin(const Table& right_table, const JoinCondition& condition) const {
+    // 找到连接属性在两个表中的位置
+    int left_attr_pos = -1, right_attr_pos = -1;
+    for(int i = 0; i < attr_.num; i++) {
+        if(attr_.name[i] == condition.left_attr) {
+            left_attr_pos = i;
+            break;
+        }
+    }
+    for(int i = 0; i < right_table.attr_.num; i++) {
+        if(right_table.attr_.name[i] == condition.right_attr) {
+            right_attr_pos = i;
+            break;
+        }
+    }
+    
+    if(left_attr_pos == -1 || right_attr_pos == -1) {
+        throw attribute_not_exist();
+    }
+
+    // 检查数据类型是否匹配
+    if(attr_.type[left_attr_pos] != right_table.attr_.type[right_attr_pos]) {
+        throw data_type_conflict();
+    }
+
+    // 创建结果表的属性
+    Attribute result_attr;
+    result_attr.num = attr_.num + right_table.attr_.num;
+    result_attr.primary_key = -1;  // 连接结果没有主键
+    
+    // 复制左表属性
+    for(int i = 0; i < attr_.num; i++) {
+        result_attr.name[i] = title_ + "." + attr_.name[i];
+        result_attr.type[i] = attr_.type[i];
+        result_attr.unique[i] = false;  // 连接后的属性都不唯一
+        result_attr.has_index[i] = false;
+    }
+    
+    // 复制右表属性
+    for(int i = 0; i < right_table.attr_.num; i++) {
+        result_attr.name[i + attr_.num] = right_table.title_ + "." + right_table.attr_.name[i];
+        result_attr.type[i + attr_.num] = right_table.attr_.type[i];
+        result_attr.unique[i + attr_.num] = false;
+        result_attr.has_index[i + attr_.num] = false;
+    }
+
+    // 创建结果表
+    Table result_table(title_ + "_" + right_table.title_ + "_join", result_attr);
+    
+    // 对左表的每条记录
+    for(const auto& left_tuple : tuple_) {
+        if(left_tuple.isDeleted()) continue;
+        
+        bool found_match = false;
+        // 在右表中寻找匹配的记录
+        for(const auto& right_tuple : right_table.tuple_) {
+            if(right_tuple.isDeleted()) continue;
+            
+            // 检查连接条件
+            const std::vector<Data>& left_data = left_tuple.getData();
+            const std::vector<Data>& right_data = right_tuple.getData();
+            
+            bool match = false;
+            switch(condition.relation_character) {
+                case EQUAL: match = left_data[left_attr_pos] == right_data[right_attr_pos]; break;
+                case LESS: match = left_data[left_attr_pos] < right_data[right_attr_pos]; break;
+                case LESS_OR_EQUAL: match = left_data[left_attr_pos] <= right_data[right_attr_pos]; break;
+                case GREATER: match = left_data[left_attr_pos] > right_data[right_attr_pos]; break;
+                case GREATER_OR_EQUAL: match = left_data[left_attr_pos] >= right_data[right_attr_pos]; break;
+                case NOT_EQUAL: match = left_data[left_attr_pos] != right_data[right_attr_pos]; break;
+            }
+            
+            if(match) {
+                found_match = true;
+                // 创建新的元组
+                Tuple new_tuple;
+                // 添加左表数据
+                for(const auto& data : left_data) {
+                    new_tuple.addData(data);
+                }
+                // 添加右表数据
+                for(const auto& data : right_data) {
+                    new_tuple.addData(data);
+                }
+                result_table.getTuple().push_back(new_tuple);
+            }
+        }
+        
+        // 如果没有找到匹配，添加一条右表为NULL的记录
+        if(!found_match) {
+            Tuple new_tuple;
+            // 添加左表数据
+            for(const auto& data : left_tuple.getData()) {
+                new_tuple.addData(data);
+            }
+            // 添加右表NULL数据
+            for(int i = 0; i < right_table.attr_.num; i++) {
+                Data null_data;
+                null_data.type = right_table.attr_.type[i];
+                switch(null_data.type) {
+                    case -1: null_data.datai = 0; break;
+                    case 0: null_data.dataf = 0.0; break;
+                    default: null_data.datas = "NULL"; break;
+                }
+                new_tuple.addData(null_data);
+            }
+            result_table.getTuple().push_back(new_tuple);
+        }
+    }
+    
+    return result_table;
 }
