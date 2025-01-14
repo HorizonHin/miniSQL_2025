@@ -360,7 +360,7 @@ bool API::renameTable(std::string old_table_name, std::string new_table_name) {
     
     // 创建新表(使用旧表的属性)
     record.createTableFile(new_table_name);
-    catalog->createTable(new_table_name, attr, attr.primary_key, catalog.getIndex(old_table_name));
+    catalog.createTable(new_table_name, attr, attr.primary_key, catalog.getIndex(old_table_name));
     
     // 复制数据
     Table old_table = record.selectRecord(old_table_name);
